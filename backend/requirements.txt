@@ -1,0 +1,9 @@
+fastapi==0.136.1
+uvicorn==0.47.0
+python-multipart==0.0.28
+paddlepaddle==3.3.1
+paddleocr==3.5.0
+opencv-python-headless==4.13.0.92
+Pillow==12.2.0
+python-dotenv==1.2.2
+zhconv==1.4.3

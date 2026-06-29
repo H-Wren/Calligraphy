@@ -53,7 +53,7 @@ render.yaml
 https://你的-render-service.onrender.com/health
 ```
 
-注意：PaddleOCR 依赖较重，Render 免费或低配实例可能构建慢、冷启动慢，甚至内存不足。稳定使用建议选择至少 1GB 内存以上的实例。
+注意：当前配置使用 Render 免费实例。PaddleOCR 依赖较重，免费实例可能构建慢、冷启动慢，甚至内存不足。稳定使用建议后续升级到至少 1GB 内存以上的实例。
 
 ## 3. 连接前端和后端
 

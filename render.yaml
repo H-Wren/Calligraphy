@@ -3,7 +3,7 @@ services:
     name: calligraphy-api
     runtime: docker
     rootDir: backend
-    plan: starter
+    plan: free
     healthCheckPath: /health
     envVars:
       - key: SERVER_HOST

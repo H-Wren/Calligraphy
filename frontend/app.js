@@ -4,7 +4,11 @@
  */
 
 // ========== 配置 ==========
-const API_BASE = localStorage.getItem("api_base") || "http://localhost:8000";
+const API_BASE = (
+    localStorage.getItem("api_base") ||
+    window.CALLIGRAPHY_API_BASE ||
+    "http://localhost:8000"
+).replace(/\/$/, "");
 const API_RECOGNIZE = `${API_BASE}/api/recognize`;
 const MAX_IMAGE_WIDTH = 3000;
 const JPEG_QUALITY = 0.92;

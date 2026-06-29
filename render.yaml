@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: calligraphy-api
+    runtime: docker
+    rootDir: backend
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: SERVER_HOST
+        value: 0.0.0.0
+      - key: MAX_IMAGE_SIZE
+        value: 10
+      - key: UPLOAD_DIR
+        value: ./uploads

@@ -2,15 +2,16 @@
  * 书法识文 — Service Worker
  * 提供基础离线缓存 + PWA 安装能力
  */
-const CACHE_NAME = "calligraphy-app-v1";
+const CACHE_NAME = "calligraphy-app-v2";
 
 // 需要缓存的静态资源
 const PRECACHE_URLS = [
-    "/",
-    "/index.html",
-    "/style.css",
-    "/app.js",
-    "/manifest.json"
+    "./",
+    "./index.html",
+    "./style.css",
+    "./config.js",
+    "./app.js",
+    "./manifest.json"
 ];
 
 self.addEventListener("install", (event) => {

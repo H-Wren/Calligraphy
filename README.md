@@ -118,6 +118,8 @@ http://localhost:8000
 
 生产环境建议额外配置域名、HTTPS 和更严格的 CORS 白名单。
 
+更完整的线上部署流程见 [DEPLOYMENT.md](DEPLOYMENT.md)。
+
 ## API 概览
 
 | 方法 | 路径 | 说明 |

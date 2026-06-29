@@ -5,8 +5,8 @@
 
 // ========== 配置 ==========
 const API_BASE = (
-    localStorage.getItem("api_base") ||
     window.CALLIGRAPHY_API_BASE ||
+    localStorage.getItem("api_base") ||
     "http://localhost:8000"
 ).replace(/\/$/, "");
 const API_RECOGNIZE = `${API_BASE}/api/recognize`;

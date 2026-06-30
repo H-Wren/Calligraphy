@@ -14,6 +14,7 @@ const MAX_IMAGE_WIDTH = 3000;
 const JPEG_QUALITY = 0.92;
 const HISTORY_KEY = "calligraphy_history";
 const MAX_HISTORY = 50;
+const REQUEST_TIMEOUT_MS = 300000;
 
 // ========== DOM 引用 ==========
 const $ = (sel) => document.querySelector(sel);
@@ -352,7 +353,7 @@ submitBtn.addEventListener("click", async () => {
         formData.append("file", compressedFile, "photo.jpg");
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 60000);
+        const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
         const response = await fetch(API_RECOGNIZE, {
             method: "POST",
@@ -393,9 +394,9 @@ submitBtn.addEventListener("click", async () => {
         console.error("识别出错:", err);
         setStep(1);
         if (err.name === "AbortError") {
-            showToast("上传超时，请检查网络连接");
+            showToast("识别超时。免费后端首次启动较慢，请稍后重试");
         } else if (err.message.includes("fetch") || err.message.includes("NetworkError") || err.message.includes("Failed to fetch")) {
-            showToast("网络连接失败，请确认后端已启动");
+            showToast("网络连接失败。免费后端可能正在启动，请稍后重试");
         } else {
             showToast(`识别出错: ${err.message}`);
         }

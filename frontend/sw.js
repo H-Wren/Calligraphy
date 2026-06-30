@@ -2,7 +2,7 @@
  * 书法识文 — Service Worker
  * 提供基础离线缓存 + PWA 安装能力
  */
-const CACHE_NAME = "calligraphy-app-v4";
+const CACHE_NAME = "calligraphy-app-v5";
 
 // 需要缓存的静态资源
 const PRECACHE_URLS = [

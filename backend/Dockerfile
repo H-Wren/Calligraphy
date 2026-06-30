@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.10-slim-bookworm
 
 WORKDIR /app
 
@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 安装 Python 依赖
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# 提前暴露二进制依赖问题，避免部署后启动才失败
+RUN python -c "import cv2, paddle, paddleocr; print('OCR runtime imports OK')"
 
 # 复制代码
 COPY . .

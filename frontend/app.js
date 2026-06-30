@@ -394,9 +394,9 @@ submitBtn.addEventListener("click", async () => {
         console.error("识别出错:", err);
         setStep(1);
         if (err.name === "AbortError") {
-            showToast("识别超时。免费后端首次启动较慢，请稍后重试");
+            showToast("识别超时。免费后端或 OCR 模型启动较慢，请稍后重试");
         } else if (err.message.includes("fetch") || err.message.includes("NetworkError") || err.message.includes("Failed to fetch")) {
-            showToast("网络连接失败。免费后端可能正在启动，请稍后重试");
+            showToast("后端连接中断。请稍后重试，或查看 Render Logs");
         } else {
             showToast(`识别出错: ${err.message}`);
         }

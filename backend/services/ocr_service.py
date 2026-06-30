@@ -34,6 +34,9 @@ def get_ocr():
 
             logger.info("正在初始化 PaddleOCR...")
             _ocr_instance = PaddleOCR(
+                device='cpu',
+                enable_mkldnn=False,
+                cpu_threads=1,
                 lang='ch',
                 use_doc_orientation_classify=False,
                 use_doc_unwarping=False,

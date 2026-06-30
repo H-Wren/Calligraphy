@@ -27,4 +27,4 @@ RUN mkdir -p uploads
 EXPOSE 8000
 
 # 启动
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "FLAGS_use_mkldnn=0 FLAGS_use_onednn=0 FLAGS_enable_pir_api=0 uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

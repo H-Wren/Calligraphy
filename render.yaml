@@ -12,3 +12,5 @@ services:
         value: 10
       - key: UPLOAD_DIR
         value: ./uploads
+      - key: PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK
+        value: "True"

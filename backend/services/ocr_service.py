@@ -22,7 +22,9 @@ def get_ocr():
             logger.info("正在初始化 PaddleOCR...")
             _ocr_instance = PaddleOCR(
                 lang='ch',
-                use_textline_orientation=True,
+                use_doc_orientation_classify=False,
+                use_doc_unwarping=False,
+                use_textline_orientation=False,
                 text_det_thresh=0.3,
                 text_det_box_thresh=0.5,
             )

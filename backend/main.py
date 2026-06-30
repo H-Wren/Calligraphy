@@ -10,6 +10,7 @@ from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from starlette.responses import Response
 from dotenv import load_dotenv
 
@@ -127,7 +128,7 @@ async def api_recognize(file: UploadFile = File(...)):
         f.write(image_data)
 
     # 4. OCR 识别
-    result = recognize_text(image_data)
+    result = await run_in_threadpool(recognize_text, image_data)
 
     # 5. 返回结果
     if result.get("error"):

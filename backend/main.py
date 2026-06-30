@@ -34,8 +34,13 @@ app = FastAPI(
 # CORS — 允许 PWA 前端访问
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应限定具体域名
-    allow_credentials=True,
+    allow_origins=[
+        "https://h-wren.github.io",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:8000",
+    ],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -62,6 +67,11 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok", "timestamp": datetime.now().isoformat()}
+
+
+@app.options("/{path:path}")
+def options_preflight(path: str):
+    return {"status": "ok"}
 
 
 @app.post("/api/recognize")

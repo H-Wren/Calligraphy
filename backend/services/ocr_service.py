@@ -2,6 +2,7 @@
 书法 OCR 识别服务
 封装 PaddleOCR 3.x，支持楷书/行书文字识别（简体输出）
 """
+import os
 import numpy as np
 from PIL import Image, ImageEnhance
 import io
@@ -12,6 +13,12 @@ logger = logging.getLogger(__name__)
 
 _ocr_instance = None
 
+# Render 免费 CPU 环境上 Paddle 的 oneDNN/MKLDNN 路径会触发运行时错误。
+# 必须在导入 paddleocr/paddle 前设置。
+os.environ.setdefault("FLAGS_use_mkldnn", "0")
+os.environ.setdefault("FLAGS_use_onednn", "0")
+os.environ.setdefault("FLAGS_enable_pir_api", "0")
+
 
 def get_ocr():
     """获取 OCR 单例"""
@@ -19,6 +26,12 @@ def get_ocr():
     if _ocr_instance is None:
         try:
             from paddleocr import PaddleOCR
+            try:
+                import paddle
+                paddle.set_flags({"FLAGS_use_mkldnn": False})
+            except Exception as flag_error:
+                logger.warning(f"无法设置 Paddle MKLDNN 标志: {flag_error}")
+
             logger.info("正在初始化 PaddleOCR...")
             _ocr_instance = PaddleOCR(
                 lang='ch',

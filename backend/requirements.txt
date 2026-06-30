@@ -2,10 +2,9 @@ fastapi==0.136.1
 uvicorn==0.47.0
 python-multipart==0.0.28
 numpy==1.26.4
-protobuf==3.20.3
-paddlepaddle==2.6.2
-paddleocr==2.7.3
-opencv-python-headless==4.10.0.84
+rapidocr==3.9.0
+onnxruntime==1.27.0
+opencv-python==4.10.0.84
 Pillow==10.4.0
 python-dotenv==1.2.2
 zhconv==1.4.3

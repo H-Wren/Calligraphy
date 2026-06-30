@@ -1,8 +1,7 @@
 """
 书法 OCR 识别服务
-封装 PaddleOCR，支持楷书/行书文字识别（简体输出）
+封装 RapidOCR，支持楷书/行书文字识别（简体输出）
 """
-import os
 import numpy as np
 from PIL import Image, ImageEnhance
 import io
@@ -13,39 +12,19 @@ logger = logging.getLogger(__name__)
 
 _ocr_instance = None
 
-# Render 免费 CPU 环境上 Paddle 的 oneDNN/MKLDNN 路径会触发运行时错误。
-# 必须在导入 paddleocr/paddle 前设置。
-os.environ.setdefault("FLAGS_use_mkldnn", "0")
-os.environ.setdefault("FLAGS_use_onednn", "0")
-os.environ.setdefault("FLAGS_enable_pir_api", "0")
-
 
 def get_ocr():
     """获取 OCR 单例"""
     global _ocr_instance
     if _ocr_instance is None:
         try:
-            from paddleocr import PaddleOCR
-            try:
-                import paddle
-                paddle.set_flags({"FLAGS_use_mkldnn": False})
-            except Exception as flag_error:
-                logger.warning(f"无法设置 Paddle MKLDNN 标志: {flag_error}")
+            from rapidocr import RapidOCR
 
-            logger.info("正在初始化 PaddleOCR...")
-            _ocr_instance = PaddleOCR(
-                use_gpu=False,
-                use_angle_cls=False,
-                lang='ch',
-                enable_mkldnn=False,
-                cpu_threads=1,
-                det_db_thresh=0.3,
-                det_db_box_thresh=0.5,
-                show_log=True,
-            )
-            logger.info("PaddleOCR 初始化完成")
+            logger.info("正在初始化 RapidOCR...")
+            _ocr_instance = RapidOCR()
+            logger.info("RapidOCR 初始化完成")
         except Exception as e:
-            logger.error(f"PaddleOCR 初始化失败: {e}")
+            logger.error(f"RapidOCR 初始化失败: {e}")
             raise
     return _ocr_instance
 
@@ -164,16 +143,15 @@ def _to_simplified(text: str) -> str:
 
 
 def _extract_ocr_items(result: list) -> list:
-    """兼容 PaddleOCR 2.x/3.x 的返回格式，统一为 text/score/box。"""
+    """兼容 RapidOCR 新旧返回格式，统一为 text/score/box。"""
     if not result:
         return []
 
-    # PaddleOCR 3.x: [{"rec_texts": [...], "rec_scores": [...], "rec_boxes": [...]}]
-    first = result[0]
-    if isinstance(first, dict):
-        rec_texts = first.get("rec_texts", [])
-        rec_scores = first.get("rec_scores", [])
-        rec_boxes = first.get("rec_boxes", [])
+    # RapidOCR 3.x: RapidOCROutput(boxes=[...], txts=[...], scores=[...])
+    if hasattr(result, "txts") and hasattr(result, "scores") and hasattr(result, "boxes"):
+        rec_texts = list(result.txts) if result.txts is not None else []
+        rec_scores = list(result.scores) if result.scores is not None else []
+        rec_boxes = list(result.boxes) if result.boxes is not None else []
         return [
             {
                 "text": rec_texts[idx],
@@ -183,18 +161,18 @@ def _extract_ocr_items(result: list) -> list:
             for idx in range(len(rec_texts))
         ]
 
-    # PaddleOCR 2.x usually returns one page: [[[box], (text, score)], ...]
-    page = first if len(result) == 1 and isinstance(first, list) else result
+    # RapidOCR 1.x/2.x: (ocr_result, elapse) or direct [[box, text, score], ...]
+    if isinstance(result, tuple) and result:
+        result = result[0]
+
     items = []
-    for line in page or []:
-        if not isinstance(line, (list, tuple)) or len(line) < 2:
+    for line in result or []:
+        if not isinstance(line, (list, tuple)) or len(line) < 3:
             continue
-        box, rec = line[0], line[1]
-        if not isinstance(rec, (list, tuple)) or len(rec) < 2:
-            continue
+        box, text, score = line[0], line[1], line[2]
         items.append({
-            "text": str(rec[0]),
-            "score": float(rec[1]),
+            "text": str(text),
+            "score": float(score),
             "box": box,
         })
     return items
@@ -221,7 +199,7 @@ def recognize_text(image_data: bytes) -> dict:
         # 预处理
         img_array = _preprocess(image_data)
 
-        result = ocr.ocr(img_array, cls=False)
+        result = ocr(img_array)
         items = _extract_ocr_items(result)
         if not items:
             return {

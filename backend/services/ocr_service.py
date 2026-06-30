@@ -1,6 +1,6 @@
 """
 书法 OCR 识别服务
-封装 PaddleOCR 3.x，支持楷书/行书文字识别（简体输出）
+封装 PaddleOCR，支持楷书/行书文字识别（简体输出）
 """
 import os
 import numpy as np
@@ -34,15 +34,14 @@ def get_ocr():
 
             logger.info("正在初始化 PaddleOCR...")
             _ocr_instance = PaddleOCR(
-                device='cpu',
+                use_gpu=False,
+                use_angle_cls=False,
+                lang='ch',
                 enable_mkldnn=False,
                 cpu_threads=1,
-                lang='ch',
-                use_doc_orientation_classify=False,
-                use_doc_unwarping=False,
-                use_textline_orientation=False,
-                text_det_thresh=0.3,
-                text_det_box_thresh=0.5,
+                det_db_thresh=0.3,
+                det_db_box_thresh=0.5,
+                show_log=True,
             )
             logger.info("PaddleOCR 初始化完成")
         except Exception as e:
@@ -144,17 +143,13 @@ def _is_noise(text: str, confidence: float, box: list) -> bool:
 
     # 检测框极小（< 30px 宽或高）→ 噪声
     if box is not None and len(box) >= 4:
-        import numpy as np
-        if isinstance(box, np.ndarray):
-            box_flat = box.flatten().tolist()
-        else:
-            box_flat = list(box)
-        if len(box_flat) >= 4:
-            x1, y1, x2, y2 = int(box_flat[0]), int(box_flat[1]), int(box_flat[2]), int(box_flat[3])
-            w = abs(x2 - x1)
-            h = abs(y2 - y1)
-            if w < 30 or h < 30:
-                return True
+        points = np.array(box).reshape(-1, 2)
+        xs = points[:, 0]
+        ys = points[:, 1]
+        w = float(xs.max() - xs.min())
+        h = float(ys.max() - ys.min())
+        if w < 30 or h < 30:
+            return True
 
     return False
 
@@ -166,6 +161,43 @@ def _to_simplified(text: str) -> str:
         return zhconv.convert(text, 'zh-cn')
     except ImportError:
         return text
+
+
+def _extract_ocr_items(result: list) -> list:
+    """兼容 PaddleOCR 2.x/3.x 的返回格式，统一为 text/score/box。"""
+    if not result:
+        return []
+
+    # PaddleOCR 3.x: [{"rec_texts": [...], "rec_scores": [...], "rec_boxes": [...]}]
+    first = result[0]
+    if isinstance(first, dict):
+        rec_texts = first.get("rec_texts", [])
+        rec_scores = first.get("rec_scores", [])
+        rec_boxes = first.get("rec_boxes", [])
+        return [
+            {
+                "text": rec_texts[idx],
+                "score": rec_scores[idx] if idx < len(rec_scores) else 0.0,
+                "box": rec_boxes[idx] if idx < len(rec_boxes) else [],
+            }
+            for idx in range(len(rec_texts))
+        ]
+
+    # PaddleOCR 2.x usually returns one page: [[[box], (text, score)], ...]
+    page = first if len(result) == 1 and isinstance(first, list) else result
+    items = []
+    for line in page or []:
+        if not isinstance(line, (list, tuple)) or len(line) < 2:
+            continue
+        box, rec = line[0], line[1]
+        if not isinstance(rec, (list, tuple)) or len(rec) < 2:
+            continue
+        items.append({
+            "text": str(rec[0]),
+            "score": float(rec[1]),
+            "box": box,
+        })
+    return items
 
 
 def recognize_text(image_data: bytes) -> dict:
@@ -189,24 +221,9 @@ def recognize_text(image_data: bytes) -> dict:
         # 预处理
         img_array = _preprocess(image_data)
 
-        # PaddleOCR 3.x API
-        # text_rec_score_thresh=0.3 降低识别门槛，保留更多低自信度生僻字
-        result = ocr.ocr(img_array, text_rec_score_thresh=0.3)
-        if not result or result[0] is None:
-            return {
-                "success": True,
-                "text": "",
-                "lines": [],
-                "total_lines": 0,
-                "error": "未识别到文字，请确认图片中包含书法文字"
-            }
-
-        res = result[0]
-        rec_texts = res.get("rec_texts", [])
-        rec_scores = res.get("rec_scores", [])
-        rec_boxes = res.get("rec_boxes", [])
-
-        if not rec_texts:
+        result = ocr.ocr(img_array, cls=False)
+        items = _extract_ocr_items(result)
+        if not items:
             return {
                 "success": True,
                 "text": "",
@@ -216,10 +233,10 @@ def recognize_text(image_data: bytes) -> dict:
             }
 
         lines = []
-        for idx in range(len(rec_texts)):
-            text = rec_texts[idx]
-            score = rec_scores[idx] if idx < len(rec_scores) else 0.0
-            box = rec_boxes[idx] if idx < len(rec_boxes) else []
+        for idx, item in enumerate(items):
+            text = item["text"]
+            score = item["score"]
+            box = item["box"]
 
             # 过滤噪声
             if _is_noise(text, score, box):
@@ -235,8 +252,8 @@ def recognize_text(image_data: bytes) -> dict:
                 "order": idx,
             }
             if box is not None and len(box) >= 4:
-                x1, y1, x2, y2 = int(box[0]), int(box[1]), int(box[2]), int(box[3])
-                line["box"] = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
+                box_array = np.array(box).reshape(-1, 2)
+                line["box"] = [[int(x), int(y)] for x, y in box_array[:4]]
             else:
                 line["box"] = []
 

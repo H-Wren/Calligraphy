@@ -4,13 +4,13 @@
 import os
 import uuid
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from datetime import datetime
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from starlette.concurrency import run_in_threadpool
 from starlette.responses import Response
 from dotenv import load_dotenv
 
@@ -73,12 +73,52 @@ UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "./uploads"))
 UPLOAD_DIR.mkdir(exist_ok=True)
 MAX_IMAGE_SIZE_MB = int(os.getenv("MAX_IMAGE_SIZE", "10"))
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp", ".heic", ".heif"}
+OCR_EXECUTOR = ThreadPoolExecutor(max_workers=1)
+OCR_JOBS = {}
 
 
 # ---------- 工具函数 ----------
 def validate_image(filename: str) -> bool:
     ext = Path(filename).suffix.lower()
     return ext in ALLOWED_EXTENSIONS
+
+
+def run_ocr_job(job_id: str, image_data: bytes):
+    OCR_JOBS[job_id] = {
+        "status": "processing",
+        "created_at": datetime.now().isoformat(),
+    }
+    try:
+        result = recognize_text(image_data)
+        if result.get("error"):
+            logger.warning(f"识别异常: {result['error']}")
+            OCR_JOBS[job_id] = {
+                "status": "failed",
+                "success": False,
+                "error": result["error"],
+                "text": "",
+                "updated_at": datetime.now().isoformat(),
+            }
+            return
+
+        logger.info(f"识别完成: {result['total_lines']} 行文字")
+        OCR_JOBS[job_id] = {
+            "status": "done",
+            "success": True,
+            "text": result["text"],
+            "lines": result["lines"],
+            "total_lines": result["total_lines"],
+            "updated_at": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        logger.exception("后台 OCR 任务失败")
+        OCR_JOBS[job_id] = {
+            "status": "failed",
+            "success": False,
+            "error": f"识别失败: {str(e)}",
+            "text": "",
+            "updated_at": datetime.now().isoformat(),
+        }
 
 
 # ---------- API 路由 ----------
@@ -127,24 +167,27 @@ async def api_recognize(file: UploadFile = File(...)):
     with open(save_path, "wb") as f:
         f.write(image_data)
 
-    # 4. OCR 识别
-    result = await run_in_threadpool(recognize_text, image_data)
+    # 4. 后台 OCR 识别，避免 Render 单次请求超时
+    job_id = str(uuid.uuid4())[:12]
+    OCR_JOBS[job_id] = {
+        "status": "queued",
+        "created_at": datetime.now().isoformat(),
+    }
+    OCR_EXECUTOR.submit(run_ocr_job, job_id, image_data)
 
-    # 5. 返回结果
-    if result.get("error"):
-        logger.warning(f"识别异常: {result['error']}")
-        return JSONResponse(
-            status_code=200,
-            content={"success": False, "error": result["error"], "text": ""}
-        )
-
-    logger.info(f"识别完成: {result['total_lines']} 行文字")
     return {
         "success": True,
-        "text": result["text"],
-        "lines": result["lines"],
-        "total_lines": result["total_lines"],
+        "status": "queued",
+        "job_id": job_id,
     }
+
+
+@app.get("/api/recognize/{job_id}")
+async def api_recognize_status(job_id: str):
+    job = OCR_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(404, "识别任务不存在或已过期")
+    return job
 
 
 @app.post("/api/crop-image")

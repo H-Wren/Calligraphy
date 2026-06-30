@@ -300,6 +300,29 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function pollRecognitionJob(jobId) {
+    const deadline = Date.now() + REQUEST_TIMEOUT_MS;
+
+    while (Date.now() < deadline) {
+        await sleep(3000);
+        const response = await fetch(`${API_RECOGNIZE}/${jobId}`);
+        if (!response.ok) {
+            throw new Error(`任务查询失败 (${response.status})`);
+        }
+
+        const data = await response.json();
+        if (data.status === "done" || data.status === "failed") {
+            return data;
+        }
+    }
+
+    throw new DOMException("识别任务超时", "AbortError");
+}
+
 // ========== 事件 ==========
 
 // 拍照
@@ -366,7 +389,11 @@ submitBtn.addEventListener("click", async () => {
             throw new Error(`服务器错误 (${response.status})`);
         }
 
-        const data = await response.json();
+        let data = await response.json();
+        if (data.job_id) {
+            showToast("后端正在识别，请稍候...", 10000);
+            data = await pollRecognitionJob(data.job_id);
+        }
 
         setStep(3);
 

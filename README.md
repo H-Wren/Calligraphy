@@ -1,18 +1,47 @@
 # 书法识文
 
-一款面向书法作品的拍照识别 PWA。用户可以用手机或浏览器上传书法图片，后端通过 PaddleOCR 识别文字，并支持查看、编辑、复制识别结果和保存本地历史记录。
+书法作品识别与整理辅助工具。项目面向书法图片的数字化整理场景：上传作品照片，自动压缩并提交到后端 OCR，返回可编辑、可复制、可保存到本地历史的识别文本。
+
+当前版本定位为 **桌面浏览器优先的实验型 OCR 工具**。电脑端 Chrome / Edge 已可用；手机端受 GitHub Pages PWA 缓存、移动浏览器上传行为和 Render 免费后端冷启动影响，暂不作为稳定使用场景。
+
+- 在线前端：[https://h-wren.github.io/Calligraphy/](https://h-wren.github.io/Calligraphy/)
+- 后端健康检查：[https://calligraphy-api-7cs2.onrender.com/health](https://calligraphy-api-7cs2.onrender.com/health)
+- 仓库：[https://github.com/H-Wren/Calligraphy](https://github.com/H-Wren/Calligraphy)
 
 ![书法识文首页](docs/images/capture.png)
 
-## 功能亮点
+## 项目定位
 
-- 拍照或从相册选择书法作品图片
-- 前端自动压缩图片，减少上传体积
-- FastAPI 后端调用 PaddleOCR 中文识别
-- 识别结果可编辑、复制，并保存到浏览器本地历史
-- 支持自动裁剪与背景白化，便于保存更干净的作品图
-- PWA 形态，可添加到 iPhone 主屏幕使用
-- 提供 Docker Compose 部署配置
+这个项目不是通用 OCR 产品，而是一个围绕书法作品整理流程的小型工具原型：
+
+- 帮助把书法作品照片转成可编辑文本
+- 辅助建立作品文字记录、检索材料和档案条目
+- 验证传统书法内容数字化整理的交互流程
+- 为个人网站、作品档案和后续数据整理提供基础能力
+
+识别结果仍需要人工校对。书法字体、拍摄角度、纸张反光、印章和落款都会影响 OCR 质量。
+
+## 当前状态
+
+| 能力 | 状态 |
+| --- | --- |
+| 桌面端上传图片 | 可用 |
+| 桌面端 OCR 识别 | 可用 |
+| 结果编辑、复制 | 可用 |
+| 本地历史记录 | 可用 |
+| 自动裁剪/背景白化 | 实验性 |
+| 手机端 Safari / Edge | 不稳定，暂不推荐 |
+| 免费 Render 后端 | 可运行，但有冷启动和偶发连接中断 |
+
+## 功能
+
+- 上传或拍摄书法作品图片
+- 前端自动压缩图片，降低上传体积
+- 后端异步 OCR：提交后返回任务 ID，前端轮询识别结果
+- 识别文本可编辑、复制
+- 识别结果保存到浏览器本地历史
+- 支持裁剪与背景白化接口
+- GitHub Pages 静态前端 + Render Docker 后端部署
 
 ## 效果预览
 
@@ -22,47 +51,63 @@
 
 ## 技术栈
 
-- 前端：HTML、CSS、原生 JavaScript、PWA
+- 前端：HTML、CSS、原生 JavaScript、PWA Service Worker
 - 后端：Python、FastAPI、Uvicorn
-- OCR：PaddleOCR、PaddlePaddle
+- OCR：RapidOCR、ONNX Runtime
 - 图像处理：OpenCV、Pillow
-- 部署：Docker、Docker Compose
+- 部署：GitHub Pages、Render Docker
+
+## 架构
+
+```text
+Browser / GitHub Pages
+        |
+        | POST /api/recognize
+        v
+FastAPI on Render
+        |
+        | background OCR job
+        v
+RapidOCR + ONNX Runtime
+        |
+        | GET /api/recognize/{job_id}
+        v
+Editable result in browser
+```
+
+识别接口采用后台任务方式，避免 Render 免费实例在单次长请求中被代理层断开。
 
 ## 项目结构
 
 ```text
 Calligraphy/
-├── backend/                  # FastAPI 后端
-│   ├── main.py               # API 入口
-│   ├── requirements.txt      # Python 依赖
-│   ├── Dockerfile            # 后端 Docker 镜像
-│   ├── uploads/              # 上传图片保存目录
+├── backend/
+│   ├── main.py                # FastAPI API 与后台任务
+│   ├── requirements.txt       # Python 依赖
+│   ├── Dockerfile             # Render Docker 构建
 │   └── services/
-│       ├── image_processor.py # 自动裁剪和背景白化
-│       └── ocr_service.py     # OCR 识别服务
-├── frontend/                 # PWA 前端
+│       ├── image_processor.py # 裁剪与背景白化
+│       └── ocr_service.py     # RapidOCR 识别服务
+├── frontend/
 │   ├── index.html
 │   ├── style.css
 │   ├── app.js
+│   ├── config.js              # 线上 API 地址
 │   ├── manifest.json
 │   └── sw.js
-├── docs/images/              # README 展示图片
-├── 截图/                     # 原始截图
+├── docs/
+│   ├── images/                # README 图片
+│   └── website-copy.md        # 个人网站项目文案
 ├── docker-compose.yml
-└── .env.example
+├── render.yaml
+└── DEPLOYMENT.md
 ```
 
 ## 本地运行
 
-### 1. 准备 Python 环境
+建议使用 Python 3.10。
 
-建议使用 Python 3.9 或 3.10。
-
-```powershell
-python --version
-```
-
-### 2. 启动后端
+### 启动后端
 
 ```powershell
 cd backend
@@ -70,66 +115,63 @@ pip install -r requirements.txt
 python main.py
 ```
 
-启动成功后，后端默认运行在：
+默认地址：
 
 ```text
 http://localhost:8000
 ```
 
-首次运行 PaddleOCR 时会自动下载中文识别模型，请保持网络畅通。
+### 打开前端
 
-### 3. 打开前端
-
-直接用浏览器打开：
+直接打开：
 
 ```text
 frontend/index.html
 ```
 
-如果要在手机上访问，建议在项目根目录启动一个静态服务：
+或启动静态服务：
 
 ```powershell
 python -m http.server 8080
 ```
 
-然后在同一 Wi-Fi 下用手机访问：
+然后访问：
 
 ```text
-http://你的电脑IP:8080/frontend/
+http://localhost:8080/frontend/
 ```
 
-如果后端不在本机，需要在 `frontend/app.js` 中把 `API_BASE` 改成后端地址：
-
-```javascript
-const API_BASE = "http://你的电脑IP:8000";
-```
-
-## Docker 部署
-
-```bash
-docker-compose up -d
-```
-
-默认暴露后端服务：
+本地开发时，如需改 API 地址，可编辑：
 
 ```text
-http://localhost:8000
+frontend/config.js
 ```
 
-生产环境建议额外配置域名、HTTPS 和更严格的 CORS 白名单。
-
-更完整的线上部署流程见 [DEPLOYMENT.md](DEPLOYMENT.md)。
-
-## API 概览
+## API
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/health` | 健康检查 |
-| `POST` | `/api/recognize` | 上传图片并返回 OCR 识别结果 |
-| `POST` | `/api/crop-image` | 上传图片并返回裁剪、白化后的图片 |
+| `POST` | `/api/recognize` | 上传图片，创建 OCR 任务 |
+| `GET` | `/api/recognize/{job_id}` | 查询 OCR 任务结果 |
+| `POST` | `/api/crop-image` | 上传图片，返回裁剪和背景白化结果 |
 
-## 注意事项
+## 部署说明
 
-- OCR 效果取决于照片清晰度、光线、纸张倾斜和书法字体复杂度。
-- 当前前端使用浏览器 `localStorage` 保存历史记录，不会同步到服务端。
-- `backend/uploads/` 会保存上传图片，公开部署时请按实际隐私要求清理或改造。
+前端部署在 GitHub Pages 的 `gh-pages` 分支；后端部署在 Render 的免费 Docker Web Service。完整部署流程见 [DEPLOYMENT.md](DEPLOYMENT.md)。
+
+## 已知限制
+
+- 手机端暂不作为稳定使用场景。
+- Render 免费实例会休眠，首次请求可能较慢。
+- OCR 模型对书法字体的识别并不稳定，结果需要人工校对。
+- 浏览器历史记录只保存在本机 `localStorage`，不会同步。
+- 上传图片会写入后端 `uploads/`，公开部署时应定期清理或改造为临时存储。
+
+## 后续方向
+
+- 提供更稳定的后端部署环境
+- 支持批量上传和批量导出
+- 增加作品元数据字段：作者、年代、尺寸、释文、备注
+- 改善手机端上传和缓存体验
+- 为个人作品档案网站提供嵌入式入口

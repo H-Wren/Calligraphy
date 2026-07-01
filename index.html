@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="书法识文">
+    <meta name="description" content="书法拍照识别，自动矫正">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="manifest" href="manifest.json?v=retry">
+    <title>书法识文</title>
+    <link rel="stylesheet" href="style.css?v=retry">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>🖌 书法识文</h1>
+            <p class="subtitle">书法作品识别</p>
+        </header>
+
+        <div class="steps">
+            <div class="step active" data-step="1">① 拍照</div>
+            <div class="step" data-step="2">② 识别</div>
+            <div class="step" data-step="3">③ 结果</div>
+            <div class="step" data-step="4">④ 历史</div>
+        </div>
+
+        <main>
+            <!-- 步骤1: 拍照/选图 -->
+            <section id="step-capture" class="step-content active">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#8B5E3C" stroke-width="1.5">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                    </div>
+                    <p class="upload-hint">点击拍照或选择图片</p>
+                    <p class="upload-sub">支持 JPG、PNG 格式</p>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="cameraBtn">
+                            <span class="btn-icon">📸</span> 拍照
+                        </button>
+                        <button class="btn btn-secondary" id="galleryBtn">
+                            <span class="btn-icon">🖼</span> 相册
+                        </button>
+                    </div>
+                    <input type="file" id="imageInput" accept="image/*" capture="environment" hidden>
+                    <input type="file" id="galleryInput" accept="image/*" hidden>
+                </div>
+
+                <div id="previewArea" class="preview-area hidden">
+                    <div class="image-wrapper">
+                        <img id="imagePreview" alt="预览">
+                    </div>
+                    <div class="preview-actions">
+                        <button class="btn btn-secondary" id="retakeBtn">↩ 重拍</button>
+                        <button class="btn btn-primary" id="submitBtn">✚ 开始识别</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 步骤2: 识别中 -->
+            <section id="step-processing" class="step-content hidden">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p class="loading-text">正在识别书法文字...</p>
+                    <p class="loading-sub">后台 OCR 处理中，请稍候</p>
+                </div>
+            </section>
+
+            <!-- 步骤3: 结果（可编辑） -->
+            <section id="step-result" class="step-content hidden">
+                <div class="result-card">
+                    <div class="result-header">
+                        <h2>📝 识别结果</h2>
+                        <div class="result-header-actions">
+                            <button class="btn btn-sm" id="editToggleBtn">✏️ 编辑</button>
+                            <button class="btn btn-sm" id="copyBtn">📋 复制</button>
+                        </div>
+                    </div>
+                    <div class="result-text" id="resultText" contenteditable="false"></div>
+                    <div class="result-edit-hint hidden" id="editHint">点击文字可直接修改</div>
+                </div>
+
+                <div class="result-meta" id="resultMeta"></div>
+
+                <div class="result-actions">
+                    <button class="btn btn-secondary" id="newBtn">🔄 识别下一张</button>
+                    <button class="btn btn-secondary" id="cropDownloadBtn">📐 下载裁剪图</button>
+                    <button class="btn btn-secondary" id="historyBtn">📜 历史记录</button>
+                </div>
+            </section>
+
+            <!-- 步骤4: 历史记录 -->
+            <section id="step-history" class="step-content hidden">
+                <div class="history-header">
+                    <h2>📜 历史记录</h2>
+                    <button class="btn btn-sm" id="clearHistoryBtn">🗑 清空</button>
+                </div>
+                <div id="historyList" class="history-list">
+                    <p class="history-empty">暂无记录</p>
+                </div>
+                <div class="result-actions">
+                    <button class="btn btn-secondary" id="backFromHistoryBtn">← 返回拍照</button>
+                </div>
+            </section>
+        </main>
+
+        <div id="errorToast" class="toast hidden"></div>
+
+        <footer>
+            <p>书法识文</p>
+        </footer>
+    </div>
+
+    <script src="config.js?v=retry"></script>
+    <script src="app.js?v=retry"></script>
+</body>
+</html>

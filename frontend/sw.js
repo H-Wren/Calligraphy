@@ -2,7 +2,7 @@
  * 书法识文 — Service Worker
  * 提供基础离线缓存 + PWA 安装能力
  */
-const CACHE_NAME = "calligraphy-app-v8";
+const CACHE_NAME = "calligraphy-app-v9";
 
 // 需要缓存的静态资源
 const PRECACHE_URLS = [
@@ -42,8 +42,12 @@ self.addEventListener("fetch", (event) => {
         return;
     }
     event.respondWith(
-        caches.match(event.request).then((cached) => {
-            return cached || fetch(event.request);
+        fetch(event.request).then((response) => {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            return response;
+        }).catch(() => {
+            return caches.match(event.request);
         })
     );
 });

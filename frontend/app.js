@@ -304,12 +304,40 @@ function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function fetchWithRetry(url, options = {}, retries = 3) {
+    let lastError;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            return await fetch(url, options);
+        } catch (err) {
+            lastError = err;
+            if (attempt === retries) break;
+            showToast(`后端连接中，正在重试 ${attempt + 1}/${retries}...`, 5000);
+            await sleep(3000 + attempt * 3000);
+        }
+    }
+    throw lastError;
+}
+
+async function wakeBackend() {
+    for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+            const response = await fetchWithRetry(`${API_BASE}/health`, {}, 0);
+            if (response.ok) return;
+        } catch {
+            // Render 免费实例冷启动时可能短暂断开，继续重试。
+        }
+        showToast("正在唤醒免费后端...", 5000);
+        await sleep(5000);
+    }
+}
+
 async function pollRecognitionJob(jobId) {
     const deadline = Date.now() + REQUEST_TIMEOUT_MS;
 
     while (Date.now() < deadline) {
         await sleep(3000);
-        const response = await fetch(`${API_RECOGNIZE}/${jobId}`);
+        const response = await fetchWithRetry(`${API_RECOGNIZE}/${jobId}`, {}, 2);
         if (!response.ok) {
             throw new Error(`任务查询失败 (${response.status})`);
         }
@@ -375,14 +403,16 @@ submitBtn.addEventListener("click", async () => {
         const formData = new FormData();
         formData.append("file", compressedFile, "photo.jpg");
 
+        await wakeBackend();
+
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-        const response = await fetch(API_RECOGNIZE, {
+        const response = await fetchWithRetry(API_RECOGNIZE, {
             method: "POST",
             body: formData,
             signal: controller.signal,
-        });
+        }, 3);
         clearTimeout(timeout);
 
         if (!response.ok) {
